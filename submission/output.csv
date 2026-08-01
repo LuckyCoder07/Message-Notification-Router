@@ -1,0 +1,111 @@
+message_id,action,message_type,reason,confidence,evidence_message_ids
+msg_023,notify,business_update,Delivery is arriving today.,0.92,none
+msg_091,mute,spam,Sender has been reported previously.,0.98,message_0381;message_0238
+msg_090,notify,personal,Direct personal message.,0.7,none
+msg_048,notify,urgent,Urgent action required.,0.86,message_0100;message_0152;message_0149
+msg_040,mute,spam,Viral chain-forward (forwarded 7 times).,0.98,message_0135;message_0259;message_0136
+msg_075,digest,business_update,Generic shipping update.,0.6,none
+msg_005,notify,personal,Strong personal interaction history.,0.92,message_0114;message_0332;message_0066
+msg_104,notify,personal,Direct personal message.,0.7,message_0115;message_0116;message_0383
+msg_069,mute,spam,Viral chain-forward (forwarded 11 times).,0.98,message_0079;message_0247;message_0193
+msg_107,notify,personal,Direct personal message.,0.7,message_0173;message_0045;message_0214
+msg_070,digest,personal,Standard personal interaction history.,0.6,message_0086;message_0173;message_0045
+msg_003,notify,urgent,Verification code detected.,0.98,none
+msg_099,notify,personal,Strong personal interaction history.,0.92,message_0249;message_0117;message_0362
+msg_008,notify,business_update,Delivery is arriving today.,0.92,none
+msg_092,digest,business_update,Business message.,0.6,none
+msg_060,notify,personal,Strong personal interaction history.,0.78,message_0375;message_0176;message_0284
+msg_004,mute,spam,Spam content detected.,0.98,none
+msg_030,digest,personal,Group conversation message.,0.6,message_0115;message_0116;message_0383
+msg_045,notify,personal,Strong personal interaction history.,0.78,message_0145;message_0146
+msg_052,notify,payment,Bill or payment is due today.,0.92,none
+msg_009,digest,personal,Standard personal interaction history.,0.6,message_0074;message_0073
+msg_071,digest,personal,Standard personal interaction history.,0.6,message_0198;message_0197
+msg_016,mute,spam,Sender has been reported previously.,0.98,message_0183;message_0024;message_0088
+msg_065,digest,business_update,Business message from known account.,0.6,none
+msg_038,notify,urgent,Urgent action required.,0.86,message_0132;message_0131
+msg_086,digest,personal,Voice note from a standard contact.,0.6,none
+msg_014,notify,business_update,Delivery is arriving today.,0.92,none
+msg_094,notify,business_update,Delivery is arriving today.,0.92,none
+msg_029,mute,spam,Viral chain-forward (forwarded 8 times).,0.98,message_0114;message_0332;message_0066
+msg_105,mute,spam,Viral chain-forward (forwarded 7 times).,0.98,message_0233;message_0373
+msg_002,notify,personal,Strong personal interaction history.,0.78,message_0169;message_0266;message_0230
+msg_010,notify,business_update,Update from an actively used business.,0.78,none
+msg_078,mute,spam,Sender has been reported previously.,0.98,message_0212;message_0211
+msg_013,notify,payment,Bill or payment is due today.,0.92,message_0082;message_0081
+msg_018,notify,urgent,Urgent action required.,0.86,message_0026;message_0091;message_0092
+msg_044,mute,spam,Sender has been reported previously.,0.98,message_0143;message_0036;message_0144
+msg_032,digest,personal,Standard personal interaction history.,0.6,message_0285;message_0119;message_0374
+msg_106,notify,personal,Strong personal interaction history.,0.92,message_0234;message_0376;message_0377
+msg_006,notify,personal,Strong personal interaction history.,0.78,message_0180;message_0269;message_0410
+msg_109,mute,spam,Sender has been reported previously.,0.98,message_0100;message_0152;message_0149
+msg_108,notify,business_update,Delivery is arriving today.,0.92,none
+msg_019,digest,business_update,Generic shipping update.,0.6,none
+msg_088,digest,personal,Voice note from a standard contact.,0.6,message_0115;message_0116;message_0383
+msg_056,notify,personal,Strong personal interaction history.,0.92,message_0040;message_0077;message_0225
+msg_027,digest,business_update,Business message.,0.6,none
+msg_050,mute,spam,Spam content detected.,0.98,none
+msg_083,digest,personal,Standard personal interaction history.,0.6,message_0219
+msg_063,notify,urgent,Urgent action required.,0.86,message_0182;message_0181
+msg_033,notify,personal,Strong personal interaction history.,0.92,message_0280;message_0122;message_0409
+msg_061,mute,spam,Viral chain-forward (forwarded 8 times).,0.98,message_0079;message_0247;message_0193
+msg_020,notify,urgent,Urgent action required.,0.86,message_0114;message_0332;message_0066
+msg_017,mute,spam,Sender has been reported previously.,0.98,message_0089;message_0090
+msg_058,mute,spam,Viral chain-forward (forwarded 10 times).,0.98,message_0040;message_0077;message_0172
+msg_026,digest,business_update,Generic shipping update.,0.6,none
+msg_047,notify,personal,Strong personal interaction history.,0.78,message_0180;message_0269;message_0410
+msg_046,mute,spam,Sender has been reported previously.,0.98,message_0147;message_0148
+msg_042,notify,personal,Strong personal interaction history.,0.78,message_0140;message_0139;message_0240
+msg_079,digest,personal,Standard personal interaction history.,0.6,message_0086;message_0173;message_0045
+msg_098,notify,personal,Strong personal interaction history.,0.92,message_0225;message_0054;message_0167
+msg_037,notify,personal,Strong personal interaction history.,0.78,message_0180;message_0269;message_0410
+msg_007,digest,personal,Standard personal interaction history.,0.6,message_0069;message_0070
+msg_085,digest,personal,Voice note from a standard contact.,0.6,none
+msg_001,notify,personal,Strong personal interaction history.,0.78,message_0140;message_0139;message_0240
+msg_021,notify,payment,Bill or payment is due today.,0.92,message_0180;message_0269;message_0410
+msg_028,digest,business_update,Business message.,0.6,none
+msg_012,mute,spam,Viral chain-forward (forwarded 9 times).,0.98,message_0079;message_0247;message_0193
+msg_064,mute,spam,Sender has been reported previously.,0.98,message_0183;message_0024;message_0088
+msg_103,notify,personal,Strong personal interaction history.,0.92,message_0114;message_0332;message_0066
+msg_031,notify,personal,Strong personal interaction history.,0.92,message_0249;message_0117;message_0362
+msg_057,notify,personal,Strong personal interaction history.,0.78,message_0169;message_0266;message_0230
+msg_087,mute,spam,Sender has been reported previously.,0.98,message_0391;message_0203;message_0358
+msg_067,notify,personal,Strong personal interaction history.,0.78,message_0180;message_0269;message_0410
+msg_039,notify,personal,Strong personal interaction history.,0.78,message_0134;message_0403;message_0255
+msg_082,notify,personal,Voice note from an active contact.,0.86,message_0397;message_0380;message_0218
+msg_066,notify,payment,Bill or payment is due today.,0.92,none
+msg_049,notify,business_update,Delivery is arriving today.,0.92,none
+msg_015,digest,personal,Standard personal interaction history.,0.6,message_0086;message_0173;message_0045
+msg_051,notify,payment,Bill or payment is due today.,0.92,none
+msg_097,notify,urgent,Urgent action required.,0.86,message_0225;message_0054;message_0167
+msg_089,notify,personal,Direct personal message.,0.7,none
+msg_053,mute,spam,Viral chain-forward (forwarded 6 times).,0.98,message_0411;message_0162;message_0161
+msg_059,mute,spam,Spam content detected.,0.98,message_0086;message_0173;message_0045
+msg_024,notify,payment,Bill or payment is due today.,0.92,none
+msg_072,digest,personal,Standard personal interaction history.,0.6,message_0086;message_0173;message_0045
+msg_036,digest,business_update,Business message.,0.6,none
+msg_076,notify,payment,Bill or payment is due today.,0.92,none
+msg_055,notify,personal,Strong personal interaction history.,0.78,message_0165;message_0387;message_0166
+msg_102,notify,personal,Strong personal interaction history.,0.78,message_0169;message_0266;message_0230
+msg_080,notify,personal,Strong personal interaction history.,0.78,message_0180;message_0269;message_0410
+msg_093,notify,payment,Bill or payment is due today.,0.92,none
+msg_034,mute,spam,Viral chain-forward (forwarded 11 times).,0.98,message_0040;message_0077;message_0172
+msg_035,digest,business_update,Business message.,0.6,none
+msg_101,notify,personal,Direct personal message.,0.7,message_0229;message_0370;message_0268
+msg_041,notify,business_update,Delivery is arriving today.,0.92,none
+msg_011,mute,spam,Viral chain-forward (forwarded 8 times).,0.98,message_0040;message_0077;message_0172
+msg_110,notify,urgent,Urgent action required.,0.86,message_0381;message_0238
+msg_095,mute,spam,Sender has been reported previously.,0.98,message_0183;message_0024;message_0088
+msg_074,mute,spam,Sender has been reported previously.,0.98,message_0391;message_0203;message_0358
+msg_073,notify,urgent,Urgent action required.,0.86,message_0183;message_0024;message_0088
+msg_054,mute,spam,Sender has been reported previously.,0.98,message_0391;message_0203;message_0358
+msg_068,digest,personal,Standard personal interaction history.,0.6,message_0192;message_0191
+msg_100,notify,personal,Strong personal interaction history.,0.92,message_0249;message_0117;message_0362
+msg_062,mute,spam,Viral chain-forward (forwarded 7 times).,0.98,message_0180;message_0269;message_0410
+msg_096,notify,personal,Direct personal message.,0.7,none
+msg_043,mute,spam,Viral chain-forward (forwarded 11 times).,0.98,message_0180;message_0269;message_0410
+msg_077,notify,personal,Strong personal interaction history.,0.78,message_0134;message_0403;message_0255
+msg_081,notify,personal,Voice note from an active contact.,0.86,message_0217
+msg_025,notify,urgent,Verification code detected.,0.98,none
+msg_084,digest,personal,Voice note from a standard contact.,0.6,none
+msg_022,notify,payment,Bill or payment is due today.,0.92,message_0100;message_0152;message_0149

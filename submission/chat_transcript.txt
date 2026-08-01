@@ -1,0 +1,162 @@
+$ python3 main.py
+2026-08-01 23:41:58 - INFO - Starting Message Notification Router Pipeline...
+2026-08-01 23:41:58 - INFO - Loading datasets...
+2026-08-01 23:41:59 - INFO - Loaded 412 rows from message_history.csv
+2026-08-01 23:41:59 - INFO - Loaded 412 rows from message_events.csv
+2026-08-01 23:41:59 - INFO - Loaded 401 rows from group_members.csv
+2026-08-01 23:41:59 - INFO - Loaded 106 rows from user_business_history.csv
+2026-08-01 23:41:59 - INFO - Loaded 110 rows from messages.csv
+2026-08-01 23:41:59 - INFO - Building historical indexes for fast lookups...
+2026-08-01 23:41:59 - INFO - Generating predictions for 110 incoming messages...
+2026-08-01 23:41:59 - INFO - Writing predictions to outputs/output.csv...
+2026-08-01 23:41:59 - INFO - ========================================
+2026-08-01 23:41:59 - INFO - PIPELINE SUMMARY
+2026-08-01 23:41:59 - INFO - ========================================
+2026-08-01 23:41:59 - INFO - Execution Time    : 0.08 seconds
+2026-08-01 23:41:59 - INFO - Total Messages    : 110
+2026-08-01 23:41:59 - INFO - Notify Count      : 59
+2026-08-01 23:41:59 - INFO - Digest Count      : 24
+2026-08-01 23:41:59 - INFO - Mute Count        : 27
+2026-08-01 23:41:59 - INFO - Average Confidence: 0.83
+2026-08-01 23:41:59 - INFO - ========================================
+2026-08-01 23:41:59 - INFO - Pipeline completed successfully.
+
+$ python3 interactive.py
+Initializing Prediction Engine...
+Interactive Message Router CLI initialized.
+Type 'help' to see available commands.
+
+router> analytics stats
+
+=== ANALYTICS: STATS ===
+Total Predictions: 110
+Notify: 59 (53.6%)
+Digest: 24 (21.8%)
+Mute:   27 (24.5%)
+
+router> analytics reports
+
+=== ANALYTICS: REPORTS ===
+Total Spam/Scam Detected: 8
+
+Breakdown by Reason:
+Flagged as scam message.                   5
+Message from a reported sender.            2
+Flagged as spam conversation.              1
+
+router> predict msg_048
+
+--- Prediction Results for msg_048 ---
+Message:     🚨 URGENT: Your account has been suspended! Please verify your login credent...
+Action:      MUTE
+Type:        scam
+Confidence:  0.86
+Reason:      Flagged as scam message.
+Evidence:    message_0105
+
+router> insights msg_048
+
+=== AI ROUTING INSIGHT: msg_048 ===
+
+The system decided to MUTE this message with 86% confidence. The primary driver
+was `rule_scam`, which flagged that scam message. Contextual factors heavily
+influenced this decision: the sender has been reported previously, and it
+contains urgent keywords. Although other rules matched (rule_urgent,
+rule_conversation_type), they were overridden by the final priority resolution.
+
+router> inspect sender u_012 s_892
+
+=== INSPECT: SENDER ===
+  has_interaction           : True
+  has_replied_recently      : False
+  has_ignored               : True
+  has_been_reported         : True
+
+router> simulate
+
+=== SIMULATE INCOMING MESSAGE ===
+Enter message details (leave blank for defaults).
+Sender ID (e.g. u_011 or Dad): 
+Conversation (personal/group/business_update/spam): business_update
+Message text:
+> Your Amazon package will be delivered today by 8 PM. Track here: amzn.to/track
+
+Routing message...
+
+--- Prediction Results ---
+Action:      NOTIFY
+Type:        business_update
+Confidence:  0.8
+Reason:      Business update.
+Rule Fired:  rule_conversation_type
+
+router> simulate
+
+=== SIMULATE INCOMING MESSAGE ===
+Enter message details (leave blank for defaults).
+Sender ID (e.g. u_011 or Dad): 
+Conversation (personal/group/business_update/spam): promotion
+Message text:
+> FLASH SALE! Get 50% off all shoes today only. Click here to buy now!
+
+Routing message...
+
+--- Prediction Results ---
+Action:      DIGEST
+Type:        promotion
+Confidence:  0.65
+Reason:      Promotional message.
+Rule Fired:  rule_conversation_type
+
+router> simulate
+
+=== SIMULATE INCOMING MESSAGE ===
+Enter message details (leave blank for defaults).
+Sender ID (e.g. u_011 or Dad): Bank Alerts
+Conversation (personal/group/business_update/spam): personal
+Message text:
+> Your Netflix payment of $15.99 was successfully processed.
+
+Routing message...
+
+--- Prediction Results ---
+Action:      NOTIFY
+Type:        payment
+Confidence:  0.85
+Reason:      Message is related to payment.
+Rule Fired:  rule_payment
+
+router> inspect group u_014 g_99
+
+=== INSPECT: GROUP ===
+  is_member                 : True
+  is_muted                  : True
+  role                      : participant
+
+router> debug msg_005
+
+=== DEBUG EXECUTION TRACE: msg_005 ===
+RULE NAME                 | MATCHED | SCORE  | TIME (ms) | WINNER   | REASON
+----------------------------------------------------------------------------------------------------
+rule_conversation_type    | YES     | 25     | 0.001     |          | Group conversation message.
+rule_scam                 | no      | -      | 0.005     |          | 
+rule_payment              | no      | -      | 0.002     |          | 
+rule_event                | no      | -      | 0.002     |          | 
+rule_forward              | no      | -      | 0.001     |          | 
+rule_muted_group          | YES     | -40    | 0.002     | <- WINNER| Message from a muted group.
+
+Total Rules Executed: 19
+Total Rule Execution Time: 0.041 ms
+
+router> predict msg_005
+
+--- Prediction Results for msg_005 ---
+Message:     Does anyone know if we have practice tomorrow morning?
+Action:      DIGEST
+Type:        personal
+Confidence:  0.7
+Reason:      Message from a muted group.
+Evidence:    None
+
+router> exit
+Goodbye!
