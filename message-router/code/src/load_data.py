@@ -2,8 +2,14 @@ import os
 import logging
 import pandas as pd
 from typing import Dict
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Resolve dataset directory reliably by navigating up from this file's location
+# code/src/load_data.py -> code/src -> code -> repo_root -> dataset
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+DEFAULT_DATASET_DIR = str((REPO_ROOT / "dataset").resolve())
 
 def load_csv_safely(file_path: str) -> pd.DataFrame:
     """
@@ -23,7 +29,7 @@ def load_csv_safely(file_path: str) -> pd.DataFrame:
         logger.error(f"Error reading {file_path}: {e}")
         return pd.DataFrame()
 
-def load_all_datasets(dataset_dir: str = "dataset") -> Dict[str, pd.DataFrame]:
+def load_all_datasets(dataset_dir: str = DEFAULT_DATASET_DIR) -> Dict[str, pd.DataFrame]:
     """
     Loads all historical datasets and incoming messages from the dataset directory.
     

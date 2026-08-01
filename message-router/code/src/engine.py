@@ -42,8 +42,13 @@ class PredictionEngine:
     provide a clean, importable API with no module-level side effects.
     """
 
-    DEFAULT_DATASET_DIR: str = "dataset"
-    DEFAULT_OUTPUT_PATH: str = "outputs/output.csv"
+    from pathlib import Path
+    
+    _BASE_DIR = Path(__file__).resolve().parent.parent
+    _REPO_ROOT = _BASE_DIR.parent
+    
+    DEFAULT_DATASET_DIR: str = str((_REPO_ROOT / "dataset").resolve())
+    DEFAULT_OUTPUT_PATH: str = str((_BASE_DIR / "outputs" / "output.csv").resolve())
 
     def __init__(
         self,

@@ -65,7 +65,10 @@ def main():
         predictions = generate_predictions(incoming_messages_df)
         
         # 4. Write Output
-        output_path = "outputs/output.csv"
+        import os
+        from pathlib import Path
+        BASE_DIR = Path(__file__).resolve().parent
+        output_path = str(BASE_DIR / "outputs" / "output.csv")
         logger.info(f"Writing predictions to {output_path}...")
         write_output_csv(predictions, output_path)
         
