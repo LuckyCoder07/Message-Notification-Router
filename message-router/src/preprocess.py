@@ -131,10 +131,10 @@ def build_features(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         A dictionary of boolean flags and extracted text/keywords for the router.
     """
     if isinstance(message_row, dict):
-        raw_text = message_row.get('text', '')
+        raw_text = message_row.get('message_text', message_row.get('text', ''))
         forwarded_count = message_row.get('forwarded_count', 0)
     else:
-        raw_text = getattr(message_row, 'text', '')
+        raw_text = getattr(message_row, 'message_text', getattr(message_row, 'text', ''))
         forwarded_count = getattr(message_row, 'forwarded_count', 0)
         
     cleaned = clean_text(raw_text)

@@ -22,26 +22,27 @@ def _get_priority(result: Dict[str, Any]) -> int:
     """
     Returns an integer priority for a matched rule. Lower is higher priority.
     Priority order:
-    1. OTP
+    1. OTP / Urgent
     2. Scam
-    3. Recent reports
+    3. Recent reports / Spam
     4. Payment due today
     5. Personal
     6. Business update
     7. Event
-    8. Promotion
-    9. Forward
-    10. Default / Digest
+    8. Group
+    9. Promotion
+    10. Forward / Repeated
+    11. Default / Digest
     """
     m_type = result.get('message_type', '')
     action = result.get('action', '')
     reason = result.get('reason', '').lower()
     
-    if m_type == 'urgent' or 'otp' in reason:
+    if m_type == 'urgent' or 'otp' in reason or 'verification code' in reason:
         return 1
     if m_type == 'scam':
         return 2
-    if 'reported' in reason:
+    if m_type == 'spam' or 'reported' in reason:
         return 3
     if m_type == 'payment' and action == 'notify':
         return 4
@@ -51,12 +52,14 @@ def _get_priority(result: Dict[str, Any]) -> int:
         return 6
     if m_type == 'event':
         return 7
-    if m_type == 'promotion':
+    if m_type == 'group':
         return 8
-    if m_type == 'forward' or 'forward' in reason:
+    if m_type == 'promotion':
         return 9
+    if m_type in ('forward', 'repeated', 'media') or 'forward' in reason:
+        return 10
         
-    return 10
+    return 11
 
 def route_message(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     """

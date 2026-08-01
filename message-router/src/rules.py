@@ -35,8 +35,12 @@ def rule_payment(message: Dict[str, Any], features: Dict[str, Any], history: Dic
 def rule_business_update(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     text = features.get('clean_text', '')
-    if any(k in text for k in ['order', 'shipped', 'delivery', 'arriving', 'update']):
-        if 'today' in text or 'now' in text:
+    conv_type = str(message.get('conversation_type', '')).lower()
+    is_business_msg = conv_type == 'business'
+    has_update_keywords = any(k in text for k in ['order', 'shipped', 'delivery', 'arriving', 'update', 'tracking', 'dispatch'])
+    
+    if is_business_msg or has_update_keywords:
+        if 'today' in text or 'now' in text or 'arriving' in text:
             res.update({
                 "matched": True,
                 "score": 85,
@@ -44,7 +48,7 @@ def rule_business_update(message: Dict[str, Any], features: Dict[str, Any], hist
                 "message_type": "business_update",
                 "reason": "Delivery is arriving today."
             })
-        else:
+        elif has_update_keywords:
             res.update({
                 "matched": True,
                 "score": 30,
@@ -114,6 +118,9 @@ def rule_personal(message: Dict[str, Any], features: Dict[str, Any], history: Di
 
 def rule_family(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
+    # Do not trigger on forwarded chain messages that happen to mention family
+    if features.get('is_forwarded', False):
+        return res
     text = features.get('clean_text', '')
     family_words = ['mom', 'dad', 'brother', 'sister', 'aunt', 'uncle', 'grandma', 'grandpa', 'family']
     if any(w in text for w in family_words):
@@ -177,13 +184,28 @@ def rule_meeting(message: Dict[str, Any], features: Dict[str, Any], history: Dic
 def rule_forward(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     if features.get('is_forwarded', False):
-        res.update({
-            "matched": True,
-            "score": -70,
-            "action": "digest",
-            "message_type": "forward",
-            "reason": "Message is forwarded."
-        })
+        try:
+            fwd_count = int(message.get('forwarded_count', 1))
+        except (ValueError, TypeError):
+            fwd_count = 1
+        
+        if fwd_count >= 5:
+            # Viral chain-forwards are almost always spam/scam — hard mute
+            res.update({
+                "matched": True,
+                "score": -300,
+                "action": "mute",
+                "message_type": "spam",
+                "reason": f"Viral chain-forward (forwarded {fwd_count} times)."
+            })
+        else:
+            res.update({
+                "matched": True,
+                "score": -70,
+                "action": "digest",
+                "message_type": "forward",
+                "reason": "Message is forwarded."
+            })
     return res
 
 def rule_promotion(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
@@ -295,7 +317,7 @@ def rule_muted_group(message: Dict[str, Any], features: Dict[str, Any], history:
 
 def rule_quiet_hours(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
-    timestamp = message.get('timestamp')
+    timestamp = message.get('created_at', message.get('timestamp'))
     if isinstance(timestamp, str) and len(timestamp) > 10:
         try:
             hour = int(timestamp[11:13])
@@ -338,5 +360,74 @@ def rule_similar_history(message: Dict[str, Any], features: Dict[str, Any], hist
                 "action": "digest",
                 "message_type": "repeated",
                 "reason": "Highly similar message received previously."
+            })
+    return res
+
+def rule_recent_reply(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
+    res = _default_response()
+    sender_hist = history.get('sender', {})
+    if sender_hist.get('has_replied_recently', False) and sender_hist.get('usually_opens', False):
+        res.update({
+            "matched": True,
+            "score": 65,
+            "action": "notify",
+            "message_type": "personal",
+            "reason": "Active conversation with this sender."
+        })
+    return res
+
+def rule_urgent(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
+    res = _default_response()
+    if features.get('contains_urgent', False) and not features.get('contains_promotion', False):
+        text = features.get('clean_text', '')
+        # Only fire for genuinely urgent content, not promotional urgency
+        if any(w in text for w in ['urgent', 'immediately', 'asap', 'deadline', 'expires']):
+            res.update({
+                "matched": True,
+                "score": 80,
+                "action": "notify",
+                "message_type": "urgent",
+                "reason": "Urgent action required."
+            })
+    return res
+
+def rule_conversation_type(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
+    """Provides a baseline classification based on the conversation_type field."""
+    res = _default_response()
+    conv_type = str(message.get('conversation_type', '')).lower()
+    
+    if conv_type == 'personal':
+        res.update({
+            "matched": True,
+            "score": 55,
+            "action": "notify",
+            "message_type": "personal",
+            "reason": "Direct personal message."
+        })
+    elif conv_type == 'group':
+        res.update({
+            "matched": True,
+            "score": 25,
+            "action": "digest",
+            "message_type": "group",
+            "reason": "Group conversation message."
+        })
+    elif conv_type == 'business':
+        biz_hist = history.get('business', {})
+        if biz_hist.get('is_verified', False):
+            res.update({
+                "matched": True,
+                "score": 40,
+                "action": "digest",
+                "message_type": "business_update",
+                "reason": "Business message from known account."
+            })
+        else:
+            res.update({
+                "matched": True,
+                "score": 20,
+                "action": "digest",
+                "message_type": "business_update",
+                "reason": "Business message."
             })
     return res

@@ -85,11 +85,20 @@ def process_media(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     """
     # Safely extract fields whether it's a dict or an object
     if isinstance(message_row, dict):
-        media_type = str(message_row.get('media_type', 'none')).lower()
-        media_path = str(message_row.get('media_path', ''))
+        raw_media_type = message_row.get('media_type', 'none')
+        media_path = str(message_row.get('media_path', message_row.get('media_id', '')))
     else:
-        media_type = str(getattr(message_row, 'media_type', 'none')).lower()
-        media_path = str(getattr(message_row, 'media_path', ''))
+        raw_media_type = getattr(message_row, 'media_type', 'none')
+        media_path = str(getattr(message_row, 'media_path', getattr(message_row, 'media_id', '')))
+    
+    # Safely handle NaN / None / float values from pandas
+    if raw_media_type is None or (isinstance(raw_media_type, float)) or str(raw_media_type).lower() == 'nan':
+        media_type = 'none'
+    else:
+        media_type = str(raw_media_type).lower()
+    
+    if media_path == 'nan':
+        media_path = ''
         
     ocr_text = ""
     voice_text = ""
