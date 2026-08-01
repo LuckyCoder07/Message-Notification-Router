@@ -12,7 +12,10 @@ class HistoryIndex:
         self.user_events: Dict[str, Dict[str, int]] = defaultdict(lambda: {"opens": 0, "replies": 0, "dismissals": 0, "reports": 0})
         
         # user_id -> sender_id -> stats
-        self.sender_interactions: Dict[str, Dict[str, Dict[str, int]]] = defaultdict(lambda: defaultdict(lambda: {"opens": 0, "replies": 0, "dismissals": 0}))
+        self.sender_interactions: Dict[str, Dict[str, Dict[str, int]]] = defaultdict(lambda: defaultdict(lambda: {"opens": 0, "replies": 0, "dismissals": 0, "reports": 0}))
+        
+        # user_id -> promotion_stats
+        self.user_promotion_stats: Dict[str, Dict[str, int]] = defaultdict(lambda: {"opens": 0, "dismissals": 0})
         
         # user_id -> group_id -> stats
         self.group_status: Dict[str, Dict[str, Any]] = defaultdict(lambda: defaultdict(lambda: {"is_member": False, "is_muted": False, "role": "member"}))
@@ -49,19 +52,23 @@ def build_history_indexes(
             user = str(row.get('user_id', ''))
             sender = str(row.get('sender_id', ''))
             event = str(row.get('event_type', '')).lower()
+            msg_type = str(row.get('message_type', '')).lower() # If available
             
             if user and event:
                 if event == 'open':
                     _INDEX.user_events[user]['opens'] += 1
                     if sender: _INDEX.sender_interactions[user][sender]['opens'] += 1
+                    if msg_type == 'promotion': _INDEX.user_promotion_stats[user]['opens'] += 1
                 elif event == 'reply':
                     _INDEX.user_events[user]['replies'] += 1
                     if sender: _INDEX.sender_interactions[user][sender]['replies'] += 1
                 elif event == 'dismiss':
                     _INDEX.user_events[user]['dismissals'] += 1
                     if sender: _INDEX.sender_interactions[user][sender]['dismissals'] += 1
+                    if msg_type == 'promotion': _INDEX.user_promotion_stats[user]['dismissals'] += 1
                 elif event == 'report':
                     _INDEX.user_events[user]['reports'] += 1
+                    if sender: _INDEX.sender_interactions[user][sender]['reports'] += 1
 
     # 2. Process group_members
     if not group_members_df.empty:
@@ -106,7 +113,11 @@ def get_user_history(user_id: str) -> Dict[str, Any]:
     """Retrieves overall historical engagement for a user."""
     u_id = str(user_id)
     stats = _INDEX.user_events.get(u_id, {"opens": 0, "replies": 0, "dismissals": 0, "reports": 0})
+    promo = _INDEX.user_promotion_stats.get(u_id, {"opens": 0, "dismissals": 0})
     daily = _INDEX.daily_load.get(u_id, 0)
+    
+    # Reason about promotion dismissals
+    dismisses_promotions = (promo["dismissals"] > 0) and (promo["dismissals"] > promo["opens"])
     
     return {
         "user_id": u_id,
@@ -114,7 +125,8 @@ def get_user_history(user_id: str) -> Dict[str, Any]:
         "total_replies": stats["replies"],
         "total_dismissals": stats["dismissals"],
         "total_reports": stats["reports"],
-        "daily_notification_load": daily
+        "daily_notification_load": daily,
+        "dismisses_promotions": dismisses_promotions
     }
 
 def get_sender_history(user_id: str, sender_id: str) -> Dict[str, Any]:
@@ -122,13 +134,42 @@ def get_sender_history(user_id: str, sender_id: str) -> Dict[str, Any]:
     u_id, s_id = str(user_id), str(sender_id)
     if s_id in _INDEX.sender_interactions.get(u_id, {}):
         stats = _INDEX.sender_interactions[u_id][s_id]
+        
+        opens = stats["opens"]
+        replies = stats["replies"]
+        dismissals = stats["dismissals"]
+        reports = stats["reports"]
+        total_interactions = opens + replies + dismissals + reports
+        
+        # Historical reasoning flags
+        has_replied_recently = replies > 0
+        has_ignored = (dismissals > opens) and (dismissals > 0)
+        has_been_reported = reports > 0
+        usually_opens = (opens / total_interactions > 0.5) if total_interactions > 0 else False
+        
         return {
             "has_interaction": True,
-            "opens": stats["opens"],
-            "replies": stats["replies"],
-            "dismissals": stats["dismissals"]
+            "opens": opens,
+            "replies": replies,
+            "dismissals": dismissals,
+            "reports": reports,
+            "has_replied_recently": has_replied_recently,
+            "has_ignored": has_ignored,
+            "has_been_reported": has_been_reported,
+            "usually_opens": usually_opens
         }
-    return {"has_interaction": False, "opens": 0, "replies": 0, "dismissals": 0}
+        
+    return {
+        "has_interaction": False,
+        "opens": 0,
+        "replies": 0,
+        "dismissals": 0,
+        "reports": 0,
+        "has_replied_recently": False,
+        "has_ignored": False,
+        "has_been_reported": False,
+        "usually_opens": False
+    }
 
 def get_group_history(user_id: str, group_id: str) -> Dict[str, Any]:
     """Retrieves a user's status and history within a specific group."""
@@ -141,8 +182,25 @@ def get_business_history(user_id: str, business_id: str) -> Dict[str, Any]:
     """Retrieves the historical relationship between a user and a business."""
     u_id, b_id = str(user_id), str(business_id)
     if b_id in _INDEX.business_relations.get(u_id, {}):
-        return _INDEX.business_relations[u_id][b_id]
-    return {"is_verified": False, "recent_orders": 0, "total_spent": 0.0}
+        biz_data = _INDEX.business_relations[u_id][b_id]
+        
+        # Historical reasoning flags
+        recent_orders = biz_data.get("recent_orders", 0)
+        has_ordered_recently = recent_orders > 0
+        
+        return {
+            "is_verified": biz_data.get("is_verified", False),
+            "recent_orders": recent_orders,
+            "total_spent": biz_data.get("total_spent", 0.0),
+            "has_ordered_recently": has_ordered_recently
+        }
+        
+    return {
+        "is_verified": False, 
+        "recent_orders": 0, 
+        "total_spent": 0.0,
+        "has_ordered_recently": False
+    }
 
 def find_similar_messages(user_id: str, text: str, threshold: float = 0.8) -> List[Dict[str, Any]]:
     """
