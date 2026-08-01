@@ -66,13 +66,21 @@ def rule_verified_business(message: Dict[str, Any], features: Dict[str, Any], hi
                 "message_type": "promotion",
                 "reason": "Verified business sent a promotion."
             })
-        else:
+        elif biz_hist.get('has_ordered_recently', False):
             res.update({
                 "matched": True,
                 "score": 60,
                 "action": "notify",
                 "message_type": "business_update",
-                "reason": "Useful update from a verified business."
+                "reason": "Update from an actively used business."
+            })
+        else:
+            res.update({
+                "matched": True,
+                "score": 40,
+                "action": "digest",
+                "message_type": "business_update",
+                "reason": "Standard business update."
             })
     return res
 
@@ -80,24 +88,27 @@ def rule_personal(message: Dict[str, Any], features: Dict[str, Any], history: Di
     res = _default_response()
     sender_hist = history.get('sender', {})
     
-    # Check interaction signals based on historical flags
-    score = 50
-    reasons = []
-    
+    score = 0
     if sender_hist.get('has_replied_recently', False):
-        score += 30
-        reasons.append("recent replies")
+        score += 60
     if sender_hist.get('usually_opens', False):
-        score += 20
-        reasons.append("frequent opens")
+        score += 30
         
-    if score > 50:
+    if score >= 60:
         res.update({
             "matched": True,
             "score": score,
             "action": "notify",
             "message_type": "personal",
-            "reason": f"Strong interaction history ({', '.join(reasons)})."
+            "reason": "Strong personal interaction history."
+        })
+    elif score > 0:
+        res.update({
+            "matched": True,
+            "score": score,
+            "action": "digest",
+            "message_type": "personal",
+            "reason": "Standard personal interaction history."
         })
     return res
 
@@ -181,7 +192,6 @@ def rule_promotion(message: Dict[str, Any], features: Dict[str, Any], history: D
         biz_hist = history.get('business', {})
         sender_hist = history.get('sender', {})
         
-        # Digest if they have ordered recently or usually open messages from this sender
         if biz_hist.get('has_ordered_recently', False) or sender_hist.get('usually_opens', False):
             res.update({
                 "matched": True,
@@ -232,20 +242,30 @@ def rule_otp(message: Dict[str, Any], features: Dict[str, Any], history: Dict[st
             "score": 100,
             "action": "notify",
             "message_type": "urgent",
-            "reason": "Verification code (OTP) detected."
+            "reason": "Verification code detected."
         })
     return res
 
 def rule_voice(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     if media.get('media_type') in ['voice', 'audio']:
-        res.update({
-            "matched": True,
-            "score": 50,
-            "action": "notify",
-            "message_type": "personal",
-            "reason": "Voice note implies personal communication."
-        })
+        sender_hist = history.get('sender', {})
+        if sender_hist.get('has_replied_recently', False):
+            res.update({
+                "matched": True,
+                "score": 75,
+                "action": "notify",
+                "message_type": "personal",
+                "reason": "Voice note from an active contact."
+            })
+        else:
+            res.update({
+                "matched": True,
+                "score": 30,
+                "action": "digest",
+                "message_type": "personal",
+                "reason": "Voice note from a standard contact."
+            })
     return res
 
 def rule_image(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
@@ -254,9 +274,9 @@ def rule_image(message: Dict[str, Any], features: Dict[str, Any], history: Dict[
         res.update({
             "matched": True,
             "score": 20,
-            "action": "none",
-            "message_type": "unknown",
-            "reason": "Contains an image."
+            "action": "digest",
+            "message_type": "media",
+            "reason": "Message contains an image."
         })
     return res
 
@@ -291,19 +311,6 @@ def rule_quiet_hours(message: Dict[str, Any], features: Dict[str, Any], history:
             pass
     return res
 
-def rule_recent_reply(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
-    res = _default_response()
-    sender_hist = history.get('sender', {})
-    if sender_hist.get('has_replied_recently', False):
-        res.update({
-            "matched": True,
-            "score": 60,
-            "action": "notify",
-            "message_type": "personal",
-            "reason": "Frequent recent replies with sender."
-        })
-    return res
-
 def rule_recent_reports(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     sender_hist = history.get('sender', {})
@@ -315,4 +322,21 @@ def rule_recent_reports(message: Dict[str, Any], features: Dict[str, Any], histo
             "message_type": "spam",
             "reason": "Sender has been reported previously."
         })
+    return res
+    
+def rule_similar_history(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
+    from src.history import find_similar_messages
+    res = _default_response()
+    user_id = str(message.get('user_id', ''))
+    text = features.get('clean_text', '')
+    if user_id and text:
+        similar = find_similar_messages(user_id, text, threshold=0.85)
+        if similar:
+            res.update({
+                "matched": True,
+                "score": 30,
+                "action": "digest",
+                "message_type": "repeated",
+                "reason": "Highly similar message received previously."
+            })
     return res
