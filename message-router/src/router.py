@@ -12,6 +12,12 @@ from src.history import (
 )
 import src.rules as rules_module
 
+# Cache all rule functions once at startup to avoid per-message inspection overhead
+ALL_RULES = [
+    func for name, func in inspect.getmembers(rules_module, inspect.isfunction)
+    if name.startswith('rule_')
+]
+
 def route_message(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     """
     Coordinates the entire routing pipeline for a single incoming message.
@@ -42,14 +48,8 @@ def route_message(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     }
     
     # 4. Run Every Rule
-    # Dynamically find all functions in rules.py that start with 'rule_'
-    all_rules = [
-        func for name, func in inspect.getmembers(rules_module, inspect.isfunction)
-        if name.startswith('rule_')
-    ]
-    
     matched_results = []
-    for rule_func in all_rules:
+    for rule_func in ALL_RULES:
         result = rule_func(message=msg_dict, features=features, history=history, media=media)
         if result.get("matched", False):
             matched_results.append(result)

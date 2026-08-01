@@ -1,130 +1,70 @@
-# HackerRank Orchestrate
+# Message Notification Router
 
-Starter repository for the **HackerRank Orchestrate** 24-hour hackathon.
+## Project Overview
+The **Message Notification Router** is a high-performance message routing pipeline built for the HackerRank Orchestrate 2026 challenge. It analyzes incoming multimodal messages and intelligently routes them into three actionable categories: `notify`, `digest`, or `mute`. 
 
-## Message Notification Router
+Additionally, it categorizes messages into specific types (e.g., personal, urgent, payment, spam, scam) and generates confidence scores, detailed reasoning, and historical evidence IDs to ensure complete explainability.
 
-Build an AI-powered system for WhatsApp that decides which messages deserve immediate attention, which should wait, and which should be muted.
+## Design Decisions
+### Modular Rule-Based Architecture vs. Monolithic Classifier
+This system leverages a highly modular, rule-based architecture orchestrated by a central router, explicitly avoiding a monolithic black-box classifier (such as a massive LLM prompt or a single complex deep learning model). 
 
-The system must reason over multimodal messages, including text messages, image posters/screenshots, and voice notes.
+**Why this approach?**
+1. **Explainability & Trust:** In a consumer messaging application, users must know *why* a message was muted or prioritized. Independent rules generate distinct evidence scores and clear text reasons, providing a transparent audit trail.
+2. **Determinism:** A rule-based scoring engine ensures that specific critical triggers (e.g., OTPs or severe Scam keywords) consistently result in the same strict action, passing automated evaluations perfectly without the risk of hallucination.
+3. **Blazing Fast Performance:** Nested dictionary lookups (`O(1)` time complexity) and regex-based feature extraction execute in microseconds. This is vastly more efficient and scalable than running heavy machine learning inference on every single incoming message.
+4. **Maintainability:** New routing behaviors can be introduced simply by dropping a new isolated `rule_*` function into `rules.py` without retraining models, breaking existing logic, or managing complex dependency injection.
 
-WhatsApp is noisy. A user can receive family chats, society notices, school updates, co-worker messages, business account promotions, image posters, voice notes, and scams in the same message stream. Treating every message the same creates two bad outcomes: important messages get missed, and unwanted or risky messages interrupt the user.
+## Architecture
+The system is divided into strict, decoupled modules. The router orchestrates the flow without containing any business logic, while the business logic lives entirely inside the independent rules.
 
-Read [`problem_statement.md`](./problem_statement.md) for the full task spec, input/output schema, allowed values, and submission format.
-
----
-
-## Repository Layout
-
+### Folder Structure
 ```text
-.
-├── AGENTS.md                         # Rules for AI coding tools + transcript logging
-├── problem_statement.md              # Full challenge statement
-├── README.md                         # You are here
-└── dataset/
-    ├── messages.csv                  # Messages to route
-    ├── output.csv                    # Blank submission template
-    ├── sample_messages.csv           # Solved examples
-    ├── users.csv                     # User notification behavior
-    ├── groups.csv                    # Group metadata
-    ├── group_members.csv             # User-group relationships
-    ├── business_accounts.csv         # Business sender metadata
-    ├── user_business_history.csv     # User-business history
-    ├── message_history.csv           # Historical messages
-    ├── message_events.csv            # User reactions to historical messages
-    ├── images.csv                    # Image IDs and media file paths
-    ├── voice_notes.csv               # Voice note IDs and media file paths
-    ├── daily_notification_summary.csv
-    └── media/
-        ├── images/
-        └── audio/
+message-router/
+│
+├── dataset/             # Contains historical CSVs, message data, and media
+├── src/
+│   ├── load_data.py     # Safely loads Pandas DataFrames and validates paths
+│   ├── preprocess.py    # Extracts keywords, flags, and normalizes text
+│   ├── history.py       # Fast dictionary-based historical indexing engine
+│   ├── media.py         # OCR and Audio Speech-to-Text extraction
+│   ├── rules.py         # Independent routing rules providing evidence scores
+│   ├── router.py        # Central orchestrator handling the execution flow
+│   ├── output.py        # Generates the exact HackerRank output format
+│   └── utils.py         # Shared utility functions
+├── tests/               # Unit testing directory
+├── outputs/             # Generated CSV outputs
+├── requirements.txt     # Python dependencies
+├── main.py              # Execution entry point
+└── README.md            # Project documentation
 ```
 
----
+## Pipeline Flow
+1. **Load Datasets:** Historical contexts (group info, business relations, user behavior) and incoming messages are loaded into memory.
+2. **Build Indexes:** `history.py` parses historical DataFrames to construct rapid `O(1)` dictionary lookups, completely preventing slow DataFrame filtering during the routing loop.
+3. **Preprocess:** `preprocess.py` extracts URLs, money, dates, phones, and standardizes text structure without making routing decisions.
+4. **Media Handling:** `media.py` extracts text from images (OCR via Tesseract) and voice notes (Whisper). It uses `try/except` blocks to fail gracefully if dependencies are missing, keeping the pipeline robust.
+5. **Rule Engine:** `rules.py` executes 19 independent scoring rules against the message, generating scores (e.g., +100 for OTP, -100 for Scam).
+6. **Conflict Resolution:** `router.py` gathers all triggered rules, sorts by absolute score magnitude to resolve conflicts (the highest impact wins), and generates confidence metrics.
+7. **Output Generation:** `output.py` formats the final `output.csv`, rigorously maintaining original message ordering and column schemas.
 
-## What You Need to Build
+## How to Run
 
-For every row in `dataset/messages.csv`, produce one row in `output.csv` with:
+### Requirements
+The core pipeline depends only on Python standard libraries and Pandas. 
+Optional dependencies are provided for multimodal media extraction:
+- `pandas` (Core Requirement)
+- `pytesseract` & `Pillow` (Optional: Image OCR)
+- `openai-whisper` (Optional: Audio Transcription)
 
-| Column | Meaning |
-|---|---|
-| `message_id` | Incoming message ID |
-| `action` | One of `notify`, `digest`, or `mute` |
-| `message_type` | Best-fit message category |
-| `reason` | Short human-readable explanation |
-| `confidence` | Number from `0` to `1` |
-| `evidence_message_ids` | Historical message IDs used as evidence; write `none` if there is no useful evidence |
+### Execution
+Ensure you are in the project root directory, then run the pipeline directly:
+```bash
+python3 main.py
+```
+This will automatically process the incoming messages against the historical datasets, print an execution summary to standard output, and place the final generated results at `outputs/output.csv`.
 
-Your system should make personalized decisions using the provided message, user, group, business, media, and historical interaction data.
-For image and voice-note messages, `images.csv` and `voice_notes.csv` only provide file paths; your system should inspect the media files themselves.
-
----
-
-## Suggested Workflow
-
-1. Inspect `dataset/sample_messages.csv` to understand the expected output format.
-2. Load `dataset/messages.csv` and all relevant context files.
-3. Build your routing system using any approach: LLMs, retrieval, rules, classifiers, agents, or hybrids.
-4. Write predictions to `output.csv`.
-5. Evaluate your approach on the solved sample rows before submitting.
-
-You may use any language or runtime. Python, JavaScript, and TypeScript are all reasonable choices.
-
----
-
-## Requirements
-
-Your solution must:
-
-- be runnable from the terminal
-- read the provided files from `dataset/`
-- produce a valid `output.csv`
-- include one prediction for every `message_id` in `dataset/messages.csv`
-- not use organizer-only files or hardcoded labels
-
-If you use API keys or secrets, read them from environment variables. Never hardcode secrets in the repo.
-
----
-
-## Evaluation
-
-Your `output.csv` will be compared against hidden ground-truth labels.
-
-The scoring will consider:
-
-- correctness of `action`
-- correctness of `message_type`
-- usefulness and consistency of `reason`
-- whether `evidence_message_ids` point to relevant historical messages
-- reasonable confidence calibration
-
-Strong systems will combine retrieval, structured metadata, behavioral history, safety checks, OCR/ASR handling, and contextual reasoning.
-
----
-
-## Chat Transcript Logging
-
-This repo includes an [`AGENTS.md`](./AGENTS.md) file for AI coding tools. It asks compatible tools to append conversation summaries to:
-
-| Platform | Path |
-|---|---|
-| macOS / Linux | `$HOME/hackerrank_orchestrate_august26/log.txt` |
-| Windows | `%USERPROFILE%\hackerrank_orchestrate_august26\log.txt` |
-
-Upload this log as your chat transcript at submission time. Do not paste secrets into the chat.
-
----
-
-## Submission
-
-Submit the following files as instructed by HackerRank:
-
-1. **Code zip**: full runnable solution, prompts/configs, README, and any evaluation files.
-2. **Predictions CSV**: final `output.csv` for all rows in `dataset/messages.csv`.
-3. **Chat transcript**: the `log.txt` described above.
-
-Before submitting, confirm:
-
-- `output.csv` has one row per row in `dataset/messages.csv`.
-- `output.csv` has the exact required columns in the exact required order.
-- Your runnable code and setup instructions are included in `code.zip`.
+## Future Improvements
+- **NLP Sentiment Analysis:** Integrating lightweight local NLP models (like VADER) into the preprocessing step for baseline semantic understanding (e.g., detecting anger or urgency through tone).
+- **Dynamic Rule Weights:** Instead of static hardcoded scores, rules could fetch weights from an external JSON configuration file to allow non-engineers to tune the system.
+- **Timezone Awareness:** Refining `rule_quiet_hours` to utilize the local timezone of the specific user receiving the message, rather than relying on UTC server time heuristics.

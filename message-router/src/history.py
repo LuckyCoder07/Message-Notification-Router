@@ -158,10 +158,12 @@ def find_similar_messages(user_id: str, text: str, threshold: float = 0.8) -> Li
         
     similar = []
     for msg in _INDEX.user_messages[u_id]:
-        msg_text = str(msg.get('text', '')).lower()
-        words_msg = set(msg_text.split())
-        if not words_msg:
+        raw_text = msg.get('text', '')
+        if not isinstance(raw_text, str) or not raw_text.strip():
             continue
+            
+        msg_text = raw_text.lower()
+        words_msg = set(msg_text.split())
             
         intersection = len(words_target.intersection(words_msg))
         union = len(words_target.union(words_msg))
