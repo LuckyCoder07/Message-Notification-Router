@@ -13,52 +13,91 @@ def _default_response() -> Dict[str, Any]:
 def rule_payment(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     if features.get('contains_payment', False) or features.get('contains_money', False):
-        res.update({
-            "matched": True,
-            "score": 80,
-            "action": "notify",
-            "message_type": "payment",
-            "reason": "Payment or currency keywords detected in the message."
-        })
+        text = features.get('clean_text', '')
+        if 'today' in text or 'urgent' in text:
+            res.update({
+                "matched": True,
+                "score": 90,
+                "action": "notify",
+                "message_type": "payment",
+                "reason": "Bill or payment is due today."
+            })
+        else:
+            res.update({
+                "matched": True,
+                "score": -30,
+                "action": "digest",
+                "message_type": "payment",
+                "reason": "Standard invoice or payment record."
+            })
     return res
 
 def rule_business_update(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
-    # E.g., looking at order status keywords
     text = features.get('clean_text', '')
     if any(k in text for k in ['order', 'shipped', 'delivery', 'arriving', 'update']):
-        res.update({
-            "matched": True,
-            "score": 70,
-            "action": "notify",
-            "message_type": "business_update",
-            "reason": "Order or delivery update keywords found."
-        })
+        if 'today' in text or 'now' in text:
+            res.update({
+                "matched": True,
+                "score": 85,
+                "action": "notify",
+                "message_type": "business_update",
+                "reason": "Delivery is arriving today."
+            })
+        else:
+            res.update({
+                "matched": True,
+                "score": 30,
+                "action": "digest",
+                "message_type": "business_update",
+                "reason": "Generic shipping update."
+            })
     return res
 
 def rule_verified_business(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     biz_hist = history.get('business', {})
     if biz_hist.get('is_verified', False):
-        res.update({
-            "matched": True,
-            "score": 85,
-            "action": "notify", # Verified business updates usually warrant notification
-            "message_type": "business_update",
-            "reason": "Sender is a verified business."
-        })
+        if features.get('contains_promotion', False):
+            res.update({
+                "matched": True,
+                "score": -40,
+                "action": "digest",
+                "message_type": "promotion",
+                "reason": "Verified business sent a promotion."
+            })
+        else:
+            res.update({
+                "matched": True,
+                "score": 60,
+                "action": "notify",
+                "message_type": "business_update",
+                "reason": "Useful update from a verified business."
+            })
     return res
 
 def rule_personal(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     sender_hist = history.get('sender', {})
-    if sender_hist.get('has_interaction', False) and sender_hist.get('replies', 0) > 0:
+    
+    # Check interaction signals based on historical flags
+    score = 50
+    reasons = []
+    
+    if sender_hist.get('has_replied_recently', False):
+        score += 30
+        reasons.append("recent replies")
+    if sender_hist.get('usually_opens', False):
+        score += 20
+        reasons.append("frequent opens")
+        
+    if score > 50:
         res.update({
             "matched": True,
-            "score": 90,
+            "score": score,
             "action": "notify",
             "message_type": "personal",
-            "reason": "High historical interaction and replies with this sender."
+            "reason": f"Strong interaction history ({', '.join(reasons)})."
         })
     return res
 
@@ -72,7 +111,7 @@ def rule_family(message: Dict[str, Any], features: Dict[str, Any], history: Dict
             "score": 85,
             "action": "notify",
             "message_type": "personal",
-            "reason": "Family-related keywords detected in the message."
+            "reason": "Family-related keywords detected."
         })
     return res
 
@@ -84,21 +123,31 @@ def rule_school(message: Dict[str, Any], features: Dict[str, Any], history: Dict
             "matched": True,
             "score": 70,
             "action": "notify",
-            "message_type": "event", # Or generic depending on routing
-            "reason": "School or education related keywords detected."
+            "message_type": "event",
+            "reason": "School or education update."
         })
     return res
 
 def rule_event(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     if features.get('contains_event', False):
-        res.update({
-            "matched": True,
-            "score": 75,
-            "action": "notify",
-            "message_type": "event",
-            "reason": "Event invitation or planning keywords detected."
-        })
+        text = features.get('clean_text', '')
+        if 'today' in text or 'now' in text:
+            res.update({
+                "matched": True,
+                "score": 90,
+                "action": "notify",
+                "message_type": "event",
+                "reason": "Event happening today."
+            })
+        else:
+            res.update({
+                "matched": True,
+                "score": 40,
+                "action": "digest",
+                "message_type": "event",
+                "reason": "Future event planning."
+            })
     return res
 
 def rule_meeting(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
@@ -110,7 +159,7 @@ def rule_meeting(message: Dict[str, Any], features: Dict[str, Any], history: Dic
             "score": 80,
             "action": "notify",
             "message_type": "event",
-            "reason": "Work or meeting related keywords detected."
+            "reason": "Meeting or sync request."
         })
     return res
 
@@ -119,23 +168,36 @@ def rule_forward(message: Dict[str, Any], features: Dict[str, Any], history: Dic
     if features.get('is_forwarded', False):
         res.update({
             "matched": True,
-            "score": -30, # Forwards generally lower priority
+            "score": -70,
             "action": "digest",
             "message_type": "forward",
-            "reason": "Message is marked as forwarded."
+            "reason": "Message is forwarded."
         })
     return res
 
 def rule_promotion(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     if features.get('contains_promotion', False):
-        res.update({
-            "matched": True,
-            "score": -50,
-            "action": "digest",
-            "message_type": "promotion",
-            "reason": "Promotional keywords like sale or discount detected."
-        })
+        biz_hist = history.get('business', {})
+        sender_hist = history.get('sender', {})
+        
+        # Digest if they have ordered recently or usually open messages from this sender
+        if biz_hist.get('has_ordered_recently', False) or sender_hist.get('usually_opens', False):
+            res.update({
+                "matched": True,
+                "score": -40,
+                "action": "digest",
+                "message_type": "promotion",
+                "reason": "Promotion from an engaged business."
+            })
+        else:
+            res.update({
+                "matched": True,
+                "score": -80,
+                "action": "mute",
+                "message_type": "promotion",
+                "reason": "Unwanted promotion."
+            })
     return res
 
 def rule_spam(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
@@ -143,10 +205,10 @@ def rule_spam(message: Dict[str, Any], features: Dict[str, Any], history: Dict[s
     if features.get('contains_spam', False):
         res.update({
             "matched": True,
-            "score": -80,
+            "score": -200,
             "action": "mute",
             "message_type": "spam",
-            "reason": "High density of spam keywords detected."
+            "reason": "Spam content detected."
         })
     return res
 
@@ -155,10 +217,10 @@ def rule_scam(message: Dict[str, Any], features: Dict[str, Any], history: Dict[s
     if features.get('contains_scam', False):
         res.update({
             "matched": True,
-            "score": -100,
+            "score": -1000,
             "action": "mute",
             "message_type": "scam",
-            "reason": "Severe scam or phishing keywords detected."
+            "reason": "Severe scam or phishing attempt."
         })
     return res
 
@@ -170,7 +232,7 @@ def rule_otp(message: Dict[str, Any], features: Dict[str, Any], history: Dict[st
             "score": 100,
             "action": "notify",
             "message_type": "urgent",
-            "reason": "One-Time Password (OTP) or verification code detected."
+            "reason": "Verification code (OTP) detected."
         })
     return res
 
@@ -182,7 +244,7 @@ def rule_voice(message: Dict[str, Any], features: Dict[str, Any], history: Dict[
             "score": 50,
             "action": "notify",
             "message_type": "personal",
-            "reason": "Contains a voice note which implies personal communication."
+            "reason": "Voice note implies personal communication."
         })
     return res
 
@@ -194,7 +256,7 @@ def rule_image(message: Dict[str, Any], features: Dict[str, Any], history: Dict[
             "score": 20,
             "action": "none",
             "message_type": "unknown",
-            "reason": "Contains an image attachment."
+            "reason": "Contains an image."
         })
     return res
 
@@ -204,20 +266,17 @@ def rule_muted_group(message: Dict[str, Any], features: Dict[str, Any], history:
     if group_hist.get('is_muted', False):
         res.update({
             "matched": True,
-            "score": -90,
-            "action": "mute",
+            "score": -60,
+            "action": "digest",
             "message_type": "unknown",
-            "reason": "Message belongs to a group the user has explicitly muted."
+            "reason": "Message from a muted group."
         })
     return res
 
 def rule_quiet_hours(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
-    # A simple heuristic: check if message timestamp hour is very late or very early
-    # In reality, this would check against the user's local timezone preferences
     timestamp = message.get('timestamp')
     if isinstance(timestamp, str) and len(timestamp) > 10:
-        # Assuming simple ISO format parsing for hour roughly
         try:
             hour = int(timestamp[11:13])
             if hour >= 22 or hour <= 6:
@@ -226,7 +285,7 @@ def rule_quiet_hours(message: Dict[str, Any], features: Dict[str, Any], history:
                     "score": -40,
                     "action": "digest",
                     "message_type": "unknown",
-                    "reason": "Message received during typical quiet hours (10 PM to 6 AM)."
+                    "reason": "Message received during quiet hours."
                 })
         except:
             pass
@@ -235,26 +294,25 @@ def rule_quiet_hours(message: Dict[str, Any], features: Dict[str, Any], history:
 def rule_recent_reply(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     sender_hist = history.get('sender', {})
-    if sender_hist.get('replies', 0) > 3:
+    if sender_hist.get('has_replied_recently', False):
         res.update({
             "matched": True,
             "score": 60,
             "action": "notify",
             "message_type": "personal",
-            "reason": "User has frequently replied to this sender recently."
+            "reason": "Frequent recent replies with sender."
         })
     return res
 
 def rule_recent_reports(message: Dict[str, Any], features: Dict[str, Any], history: Dict[str, Any], media: Dict[str, Any]) -> Dict[str, Any]:
     res = _default_response()
     sender_hist = history.get('sender', {})
-    # If the user has reported this sender
-    if sender_hist.get('reports', 0) > 0:
+    if sender_hist.get('has_been_reported', False):
         res.update({
             "matched": True,
-            "score": -100,
+            "score": -1000,
             "action": "mute",
             "message_type": "spam",
-            "reason": "User has previously reported this sender."
+            "reason": "Sender has been reported previously."
         })
     return res
