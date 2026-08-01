@@ -61,7 +61,7 @@ def _get_priority(result: Dict[str, Any]) -> int:
         
     return 11
 
-def route_message(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
+def route_message(message_row: Union[Dict[str, Any], Any], explain: bool = False) -> Dict[str, Any]:
     """
     Coordinates the entire routing pipeline for a single incoming message.
     It calls the preprocessing, media extraction, historical lookups, and runs all rules.
@@ -90,10 +90,29 @@ def route_message(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         "business": get_business_history(user_id, business_id) if user_id and business_id else {}
     }
     
+    import time
+    
     # 4. Run Every Rule
     matched_results = []
+    all_rule_traces = []
+    
     for rule_func in ALL_RULES:
+        start_t = time.perf_counter()
         result = rule_func(message=msg_dict, features=features, history=history, media=media)
+        elapsed_ms = (time.perf_counter() - start_t) * 1000
+        
+        # Attach rule name for tracing
+        result["rule_name"] = rule_func.__name__
+        
+        trace = {
+            "rule_name": rule_func.__name__,
+            "matched": result.get("matched", False),
+            "score": result.get("score", 0) if result.get("matched", False) else None,
+            "reason": result.get("reason", ""),
+            "time_ms": elapsed_ms
+        }
+        all_rule_traces.append(trace)
+        
         if result.get("matched", False):
             matched_results.append(result)
             
@@ -102,6 +121,7 @@ def route_message(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     final_message_type = "unknown"
     final_reason = "No specific rules matched. Defaulting to standard digest."
     confidence = 0.60
+    best_match = None
     
     if matched_results:
         # Sort by priority tier, then absolute score as a tiebreaker
@@ -133,10 +153,23 @@ def route_message(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     evidence_ids = get_evidence_message_ids(user_id, sender_id, group_id)[:3] if user_id else []
     
     # 7. Return Final Output
-    return {
+    output = {
         "action": final_action,
         "message_type": final_message_type,
         "reason": final_reason,
         "confidence": confidence,
         "evidence_message_ids": evidence_ids
     }
+    
+    if explain:
+        output["_explanation"] = {
+            "features": features,
+            "media": media,
+            "history": history,
+            "rule_traces": all_rule_traces,
+            "matched_rules": matched_results,
+            "winning_rule": best_match,
+            "base_score": best_match.get("score", 0) if best_match else 0
+        }
+        
+    return output
