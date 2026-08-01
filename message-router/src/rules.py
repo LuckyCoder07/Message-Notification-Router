@@ -409,7 +409,7 @@ def rule_conversation_type(message: Dict[str, Any], features: Dict[str, Any], hi
             "matched": True,
             "score": 25,
             "action": "digest",
-            "message_type": "group",
+            "message_type": "personal",
             "reason": "Group conversation message."
         })
     elif conv_type == 'business':
