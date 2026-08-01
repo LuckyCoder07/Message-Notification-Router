@@ -29,36 +29,33 @@ def extract_keywords(text: str) -> List[str]:
 
 def detect_urls(text: str) -> bool:
     """Detects URLs in text."""
-    return bool(re.search(r'https?://\S+|www\.\S+', text))
+    # Improved URL regex to catch various formats and domains
+    return bool(re.search(r'(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)', text, re.IGNORECASE))
 
 def detect_email(text: str) -> bool:
     """Detects email addresses in text."""
-    return bool(re.search(r'\S+@\S+\.\S+', text))
+    # Standard email format detection
+    return bool(re.search(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', text))
 
 def detect_phone_numbers(text: str) -> bool:
     """Detects phone numbers in text."""
-    # Matches international format like +1234567890 or typical lengths
-    return bool(re.search(r'\+?\d[\d\-\s]{7,15}\d', text))
+    # Improved phone regex to catch local/international numbers with or without spaces/dashes
+    return bool(re.search(r'(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text))
 
 def detect_money(text: str) -> bool:
     """Detects currency amounts in text."""
-    return bool(re.search(
-        r'[\$\£\€\₹]\s*\d+(?:[\.\,]\d+)?|\b\d+(?:[\.\,]\d+)?\s*(?:usd|eur|gbp|inr|rs|bucks|dollars)\b', 
-        text, 
-        re.IGNORECASE
-    ))
+    # Improved money regex to catch formats like $10, 10 USD, Rs 500, €1.50, 50k
+    return bool(re.search(r'(?:[\$\£\€\₹]\s*\d+(?:[\.\,]\d{1,2})?(?:\s*[kKmMbB])?)|(?:\b\d+(?:[\.\,]\d{1,2})?\s*(?:usd|eur|gbp|inr|rs|bucks|dollars|rupees)\b)', text, re.IGNORECASE))
 
 def detect_dates(text: str) -> bool:
     """Detects dates in text."""
-    return bool(re.search(
-        r'\b(?:today|tomorrow|yesterday|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{2,4})\b', 
-        text, 
-        re.IGNORECASE
-    ))
+    # Improved date regex for multiple formats (e.g., DD/MM/YYYY, Jan 5, 1st of May, today)
+    return bool(re.search(r'\b(?:today|tomorrow|yesterday)\b|\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b|\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b', text, re.IGNORECASE))
 
 def detect_time(text: str) -> bool:
     """Detects time in text."""
-    return bool(re.search(r'\b\d{1,2}(?:\:\d{2})?\s*(?:am|pm)\b|\b\d{1,2}\:\d{2}\b', text, re.IGNORECASE))
+    # Improved time regex to catch 12h/24h formats robustly
+    return bool(re.search(r'\b(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s*(?:[aA][mM]|[pP][mM])\b|\b(?:[01]\d|2[0-3]):[0-5]\d(?:[:][0-5]\d)?\b', text))
 
 def detect_forwarded(text: str, forwarded_count: Any = None) -> bool:
     """Detects if a message was forwarded based on text or metadata."""
@@ -68,59 +65,57 @@ def detect_forwarded(text: str, forwarded_count: Any = None) -> bool:
 
 def detect_otp(text: str) -> bool:
     """Detects OTP (One Time Passwords) or verification codes."""
-    return bool(re.search(
-        r'\b(?:otp|code|pin|password)\b(?:\s+is)?\s*[\:\-]?\s*\d{4,8}\b|\b\d{4,8}\b(?=\s+is\s+(?:your|the)\s+(?:otp|code|pin|password))', 
-        text, 
-        re.IGNORECASE
-    ))
+    return bool(re.search(r'\b(?:otp|code|pin|password)\b.*?\b\d{4,8}\b|\b\d{4,8}\b.*?\b(?:otp|code|pin|password)\b', text, re.IGNORECASE))
 
 def _contains_keywords(text: str, keywords: List[str]) -> bool:
-    """Helper to check if any keyword exists in text."""
+    """Helper to check if any keyword exists in text. Supports multi-word keywords."""
     pattern = r'\b(?:' + '|'.join(re.escape(k) for k in keywords) + r')\b'
     return bool(re.search(pattern, text, re.IGNORECASE))
 
 def detect_payment_keywords(text: str) -> bool:
     """Detects keywords related to payments."""
     keywords = [
-        'pay', 'payment', 'paid', 'invoice', 'transfer', 'transferred', 
-        'bill', 'receipt', 'due', 'amount', 'transaction'
+        'invoice', 'upi', 'bank', 'account', 'payment', 'due', 'bill',
+        'electricity', 'rent', 'salary', 'refund', 'credited', 'debited', 'wallet'
     ]
     return _contains_keywords(text, keywords)
 
 def detect_promotion_keywords(text: str) -> bool:
     """Detects promotional keywords."""
     keywords = [
-        'discount', 'offer', 'sale', 'promo', 'deal', 'cheap', 
-        'save', 'coupon', 'exclusive', 'free'
+        'offer', 'sale', 'discount', 'cashback', 'coupon', 'deal',
+        'limited time', 'exclusive', 'buy now', 'free', 'festival offer'
     ]
     return _contains_keywords(text, keywords)
 
 def detect_event_keywords(text: str) -> bool:
     """Detects event related keywords."""
     keywords = [
-        'event', 'party', 'meeting', 'wedding', 'birthday', 'celebration', 
-        'invite', 'invitation', 'rsvp', 'venue', 'schedule'
+        'meeting', 'birthday', 'wedding', 'party', 'event', 'function',
+        'seminar', 'webinar', 'maintenance', 'society', 'notice', 'class'
     ]
     return _contains_keywords(text, keywords)
 
 def detect_urgent_keywords(text: str) -> bool:
     """Detects urgency keywords."""
-    keywords = ['urgent', 'emergency', 'asap', 'immediately', 'important', 'alert', 'hurry', 'quick']
+    keywords = [
+        'urgent', 'immediately', 'asap', 'today', 'tomorrow', 'deadline',
+        'last date', 'expires', 'otp', 'verification'
+    ]
     return _contains_keywords(text, keywords)
 
 def detect_spam_keywords(text: str) -> bool:
     """Detects common spam keywords."""
     keywords = [
-        'win', 'winner', 'lottery', 'prize', 'cash', 'earn', 
-        'guarantee', 'risk-free', 'click', 'subscribe', 'unsubscribe'
+        'subscribe', 'winner', 'claim', 'gift', 'lottery', 'congratulations', 'bonus'
     ]
     return _contains_keywords(text, keywords)
 
 def detect_scam_keywords(text: str) -> bool:
     """Detects potential scam keywords."""
     keywords = [
-        'bank', 'account', 'verify', 'update', 'suspend', 'blocked', 
-        'login', 'password', 'security', 'unauthorized', 'fraud', 'ssn'
+        'kyc', 'verify account', 'click link', 'bank suspended', 'prize money',
+        'investment', 'double money', 'crypto', 'earn daily'
     ]
     return _contains_keywords(text, keywords)
 
@@ -135,7 +130,6 @@ def build_features(message_row: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     Returns:
         A dictionary of boolean flags and extracted text/keywords for the router.
     """
-    # Safely extract values whether it's a dict or an object (like a pandas namedtuple/series)
     if isinstance(message_row, dict):
         raw_text = message_row.get('text', '')
         forwarded_count = message_row.get('forwarded_count', 0)
